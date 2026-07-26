@@ -146,6 +146,10 @@ export class ApiClient {
   static async getMe() {
     return this.get('/auth/me');
   }
+
+  static async loginAdmin(email, senha) {
+    return this.post('/auth/login', { email, senha });
+  }
 }
 
 

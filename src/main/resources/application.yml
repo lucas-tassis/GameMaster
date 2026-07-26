@@ -52,6 +52,7 @@ gamemaster:
   admin-emails:
     - "lucastassis2@gmail.com"
     - "admin@gamemaster.com"
+  admin-password: ${ADMIN_PASSWORD:admin123}
 
 # Configurações da API da Ludopedia (OAuth 2.0)
 ludopedia:
