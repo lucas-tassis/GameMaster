@@ -42,6 +42,11 @@ public class EventoController {
         return ResponseEntity.ok(eventoService.ativarEvento(id));
     }
 
+    @PutMapping("/{id}/desativar")
+    public ResponseEntity<Evento> desativar(@PathVariable Long id) {
+        return ResponseEntity.ok(eventoService.desativarEvento(id));
+    }
+
 
     @PutMapping("/{id}/encerrar")
     public ResponseEntity<Evento> encerrar(@PathVariable Long id) {

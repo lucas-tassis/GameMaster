@@ -34,10 +34,7 @@ public class EventoService {
     }
 
     public Evento obterEventoAtivo() {
-        return eventoRepository.findByAtivoTrue().orElseGet(() -> {
-            Evento eventoPadrao = new Evento(null, "Game Master Mall — Edição Principal", "Shopping Mall", LocalDate.now(), LocalDate.now(), LocalDate.now().plusDays(1), true);
-            return eventoRepository.save(eventoPadrao);
-        });
+        return eventoRepository.findByAtivoTrue().orElse(null);
     }
 
     public Evento salvar(Evento evento) {
@@ -60,6 +57,14 @@ public class EventoService {
     }
 
     @Transactional
+    public Evento desativarEvento(Long id) {
+        Evento evento = eventoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Evento não encontrado com ID: " + id));
+        evento.setAtivo(false);
+        return eventoRepository.save(evento);
+    }
+
+    @Transactional
     public Evento atualizarEvento(Long id, Evento eventoAtualizado) {
         Evento eventoExistente = eventoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Evento não encontrado com ID: " + id));
@@ -73,6 +78,8 @@ public class EventoService {
         if (eventoAtualizado.isAtivo() && !eventoExistente.isAtivo()) {
             desativarTodos();
             eventoExistente.setAtivo(true);
+        } else if (!eventoAtualizado.isAtivo()) {
+            eventoExistente.setAtivo(false);
         }
 
         return eventoRepository.save(eventoExistente);
@@ -80,10 +87,7 @@ public class EventoService {
 
     @Transactional
     public Evento encerrarEvento(Long id) {
-        Evento evento = eventoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Evento não encontrado com ID: " + id));
-        evento.setAtivo(false);
-        return eventoRepository.save(evento);
+        return desativarEvento(id);
     }
 
     @Transactional
@@ -107,18 +111,7 @@ public class EventoService {
             notaRepository.deleteAll(notas);
         }
 
-        boolean eraAtivo = evento.isAtivo();
         eventoRepository.delete(evento);
-
-        // Se o evento excluído era o ativo, ativar o primeiro evento restante
-        if (eraAtivo) {
-            List<Evento> restantes = eventoRepository.findAll();
-            if (!restantes.isEmpty()) {
-                Evento proximo = restantes.get(0);
-                proximo.setAtivo(true);
-                eventoRepository.save(proximo);
-            }
-        }
     }
 
     private void desativarTodos() {

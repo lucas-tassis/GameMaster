@@ -994,7 +994,7 @@ class App {
                       <div style="display: flex; gap: 0.4rem;">
                         <button class="btn btn-sm btn-primary btn-ver-painel-evento" data-id="${ev.id}">📊 Ver Painel</button>
                         <button class="btn btn-sm btn-secondary btn-editar-evento" data-id="${ev.id}">✏️ Editar</button>
-                        ${ev.ativo ? '' : `<button class="btn btn-sm btn-success btn-ativar-evento" data-id="${ev.id}">Ativar</button>`}
+                        ${ev.ativo ? `<button class="btn btn-sm btn-secondary btn-desativar-evento" data-id="${ev.id}">⏸️ Desativar</button>` : `<button class="btn btn-sm btn-success btn-ativar-evento" data-id="${ev.id}">▶️ Ativar</button>`}
                         <button class="btn btn-sm btn-secondary btn-excluir-evento" data-id="${ev.id}" style="border-color: #ef4444; color: #ef4444;">🗑️ Excluir</button>
                       </div>
                     </td>
@@ -1024,6 +1024,20 @@ class App {
         } catch (err) {
           console.error('Erro ao ativar evento:', err);
           this.showToast('Erro ao ativar evento no servidor', 'error');
+        }
+      });
+    });
+
+    container.querySelectorAll('.btn-desativar-evento').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = Number(e.currentTarget.dataset.id);
+        try {
+          await ApiClient.put(`/eventos/${id}/desativar`);
+          this.showToast('Evento desativado com sucesso.', 'info');
+          this.renderCurrentTab();
+        } catch (err) {
+          console.error('Erro ao desativar evento:', err);
+          this.showToast('Erro ao desativar evento no servidor', 'error');
         }
       });
     });
