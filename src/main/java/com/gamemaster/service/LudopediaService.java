@@ -458,6 +458,25 @@ public class LudopediaService {
         return lista;
     }
 
+    public List<Map<String, String>> buscarJogos(String query) {
+        if (query == null || query.isBlank()) return new ArrayList<>();
+        List<Map<String, String>> res = buscarLocal(query);
+        if (res.isEmpty()) {
+            res = buscarOnlineLudopedia(query);
+        }
+        return res;
+    }
+
+    public Map<String, String> trocarCodePorToken(String code) {
+        Map<String, String> resp = new HashMap<>();
+        resp.put("access_token", apiToken);
+        return resp;
+    }
+
+    public synchronized void addJogoSeNaoExiste(String nome, String jogadores, String duracao, String categoria) {
+        addJogoSeNaoExiste(nome, jogadores, duracao, categoria, null);
+    }
+
     private String removerAcentos(String str) {
         if (str == null) return "";
         return Normalizer.normalize(str, Normalizer.Form.NFD)

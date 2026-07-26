@@ -1,19 +1,15 @@
-# Estágio 1: Build do projeto com Maven e OpenJDK 21/25
+# Estágio 1: Build do projeto com Maven e OpenJDK 21 LTS
 FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 
-# Copiar pom.xml e código-fonte
+# Copiar arquivo de configuração e fontes
 COPY pom.xml .
 COPY src ./src
 
-# Alterar temporariamente o release para 21 no container se necessário
-RUN sed -i 's/<java.version>25<\/java.version>/<java.version>21<\/java.version>/g' pom.xml && \
-    sed -i 's/<maven.compiler.release>25<\/maven.compiler.release>/<maven.compiler.release>21<\/maven.compiler.release>/g' pom.xml
-
-# Compilar o JAR de produção
+# Compilar o JAR de produção de forma limpa
 RUN mvn clean package -DskipTests
 
-# Estágio 2: Imagem final leve para execução pública
+# Estágio 2: Imagem final de execução em produção
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 

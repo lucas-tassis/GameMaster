@@ -1,6 +1,5 @@
 package com.gamemaster.service;
 
-import com.gamemaster.model.Evento;
 import com.gamemaster.model.Jogo;
 import com.gamemaster.repository.EventoRepository;
 import com.gamemaster.repository.JogoRepository;
@@ -40,11 +39,6 @@ public class JogoService {
 
     @Transactional
     public void deletarTodos() {
-        List<Evento> eventos = eventoRepository.findAll();
-        for (Evento e : eventos) {
-            e.getJogosDisponiveis().clear();
-            eventoRepository.save(e);
-        }
         jogoRepository.deleteAll();
     }
 }
