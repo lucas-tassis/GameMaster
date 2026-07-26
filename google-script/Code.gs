@@ -1,86 +1,118 @@
 /**
- * GAME MASTER — GOOGLE APPS SCRIPT WEBAPP
+ * ==========================================================================
+ * GAME MASTER — GOOGLE APPS SCRIPT WEBAPP (AUTOMAÇÃO HIERÁRQUICA DO DRIVE)
+ * ==========================================================================
  * 
- * Este script recebe as requisições do aplicativo web Game Master
- * e armazena automaticamente as fotos e notas fiscais em pastas do seu Google Drive.
+ * ESTRUTURA AUTOMÁTICA DE PASTAS NO SEU GOOGLE DRIVE:
  * 
- * PASSO A PASSO PARA DEPLOY:
- * 1. Acesse https://script.google.com e crie um "Novo Projeto".
- * 2. Substitua o conteúdo pelo código abaixo.
- * 3. Altere os IDs das pastas abaixo (ID retornado na URL da pasta no Google Drive).
- * 4. Clique em Implante > Nova implantação.
- * 5. Tipo: App da Web.
- * 6. Executar como: "Eu (seu email)".
- * 7. Quem pode acessar: "Qualquer pessoa" (Anyone).
- * 8. Copie a URL do aplicativo da web e cole na aba Ajustes do app Game Master.
+ * 📁 Meu Drive
+ *    └── 📁 Game Master
+ *         └── 📁 [Nome do Evento] (ex: "Game Master Mall — Edição Principal")
+ *              ├── 📁 Fotos
+ *              └── 📁 Notas Fiscais
+ * ==========================================================================
  */
-
-// ⚠️ COLOQUE AQUI OS IDS DAS PASTAS DO SEU GOOGLE DRIVE
-const FOLDER_ID_FOTOS = 'COLE_AQUI_O_ID_DA_PASTA_FOTOS';
-const FOLDER_ID_NOTAS = 'COLE_AQUI_O_ID_DA_PASTA_NOTAS';
 
 function doPost(e) {
   try {
-    const contents = e.postData.contents;
-    const data = JSON.parse(contents);
+    if (!e || !e.postData || !e.postData.contents) {
+      return responseJSON({ success: false, message: "Dados não recebidos na requisição." });
+    }
 
-    const tipo = data.tipo; // 'foto_evento' ou 'nota_fiscal'
+    const data = JSON.parse(e.postData.contents);
+    const tipo = data.tipo || 'foto_evento'; // 'foto_evento' ou 'nota_fiscal'
     const base64Data = data.base64;
-    
+    const nomeEvento = data.nomeEvento || data.eventoNome || 'Edição Principal';
+
     if (!base64Data) {
-      return responseJSON({ success: false, message: 'Nenhuma imagem enviada.' });
+      return responseJSON({ success: false, message: "Conteúdo da imagem (Base64) não informado." });
     }
 
-    // Extrai o tipo mime e dados puros do dataURL base64
+    // 1. Obter ou Criar a Estrutura Hierárquica no Google Drive:
+    // Meu Drive > Game Master > [Nome do Evento] > Fotos (ou Notas Fiscais)
+    const folderDestino = obterOuCriarEstruturaPastas(nomeEvento, tipo);
+
+    // 2. Processar Dados da Imagem Base64
     const parts = base64Data.split(',');
-    const mimeType = parts[0].match(/:(.*?);/)[1];
-    const imageBytes = Utilities.base64Decode(parts[1]);
+    const mimeType = (parts.length > 1 && parts[0].indexOf(':') > -1)
+      ? parts[0].match(/:(.*?);/)[1]
+      : 'image/jpeg';
+    const rawBase64 = (parts.length > 1) ? parts[1] : parts[0];
+    const imageBytes = Utilities.base64Decode(rawBase64);
 
-    // Seleciona a pasta destino conforme o tipo
-    let folderId = (tipo === 'nota_fiscal') ? FOLDER_ID_NOTAS : FOLDER_ID_FOTOS;
-    let folder;
-
-    try {
-      folder = DriveApp.getFolderById(folderId);
-    } catch (err) {
-      // Se não houver ID configurado, salva na raiz do Drive
-      folder = DriveApp.getRootFolder();
-    }
-
-    // Gera nome único para o arquivo
+    // 3. Formatar Nome do Arquivo
     const dataHoraStr = Utilities.formatDate(new Date(), "GMT-3", "yyyy-MM-dd_HH-mm-ss");
     let filename = "";
 
     if (tipo === 'nota_fiscal') {
-      const lojaClean = (data.loja || 'Mall').replace(/[^a-zA-Z0-9]/g, '_');
-      filename = `Nota_${lojaClean}_R$${data.valor || 0}_${dataHoraStr}.jpg`;
+      const lojaClean = (data.loja || 'Nota').replace(/[^a-zA-Z0-9]/g, '_');
+      const valorStr = data.valor ? `R$${parseFloat(data.valor).toFixed(2)}` : 'R$0.00';
+      filename = `Nota_${lojaClean}_${valorStr}_${dataHoraStr}.jpg`;
     } else {
       const legendaClean = (data.legenda || 'Foto').substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
       filename = `Foto_${legendaClean}_${dataHoraStr}.jpg`;
     }
 
-    // Cria o Blob e salva o arquivo no Drive
+    // 4. Salvar Arquivo na Pasta Destino
     const blob = Utilities.newBlob(imageBytes, mimeType, filename);
-    const file = folder.createFile(blob);
+    const file = folderDestino.createFile(blob);
 
-    // Se houver legenda ou loja, adiciona à descrição do arquivo
-    const descricao = tipo === 'nota_fiscal' 
-      ? `Nota Fiscal: ${data.loja || 'Desconhecido'} | Valor: R$ ${data.valor || 0} | Data: ${data.dataHora}`
-      : `Foto do Evento Game Master | Legenda: ${data.legenda || ''} | Autor: ${data.autor || ''} | Data: ${data.dataHora}`;
+    // Permitir visualização por link
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (errSharing) {}
+
+    // 5. Adicionar Descrição com Metadados
+    const descricao = (tipo === 'nota_fiscal')
+      ? `Nota Fiscal: ${data.loja || 'Comprovante'} | Valor: R$ ${data.valor || 0} | Evento: ${nomeEvento} | Data: ${data.dataHora || dataHoraStr}`
+      : `Foto do Evento Game Master | Legenda: ${data.legenda || ''} | Autor: ${data.autor || 'Participante'} | Evento: ${nomeEvento} | Data: ${data.dataHora || dataHoraStr}`;
     
     file.setDescription(descricao);
 
+    // 6. Retornar Resposta de Sucesso
     return responseJSON({
       success: true,
-      message: 'Arquivo salvo com sucesso no Google Drive!',
-      fileUrl: file.getUrl()
+      message: `Arquivo salvo com sucesso em Game Master > ${nomeEvento} > ${tipo === 'nota_fiscal' ? 'Notas Fiscais' : 'Fotos'}!`,
+      fileId: file.getId(),
+      fileUrl: file.getUrl(),
+      directUrl: `https://drive.google.com/uc?export=view&id=${file.getId()}`
     });
 
   } catch (error) {
     return responseJSON({
       success: false,
-      message: 'Erro ao processar imagem: ' + error.toString()
+      message: 'Erro ao processar arquivo no Google Drive: ' + error.toString()
     });
+  }
+}
+
+/**
+ * Cria/Localiza a hierarquia:
+ * Meu Drive > Game Master > [Nome do Evento] > Fotos (ou Notas Fiscais)
+ */
+function obterOuCriarEstruturaPastas(nomeEvento, tipo) {
+  // Pasta 1: Raiz "Game Master" em Meu Drive
+  const pastaRaizApp = obterOuCriarPastaNoPai(DriveApp.getRootFolder(), "Game Master");
+
+  // Pasta 2: Pasta do Evento (ex: "Game Master Mall — Edição Principal")
+  const nomeEvClean = (nomeEvento && nomeEvento.trim()) ? nomeEvento.trim() : "Evento_Geral";
+  const pastaEvento = obterOuCriarPastaNoPai(pastaRaizApp, nomeEvClean);
+
+  // Pasta 3: Subpasta de destino ("Fotos" ou "Notas Fiscais")
+  const nomeSubpasta = (tipo === 'nota_fiscal') ? "Notas Fiscais" : "Fotos";
+  return obterOuCriarPastaNoPai(pastaEvento, nomeSubpasta);
+}
+
+function obterOuCriarPastaNoPai(pastaPai, nomePasta) {
+  const folders = pastaPai.getFoldersByName(nomePasta);
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    const novaPasta = pastaPai.createFolder(nomePasta);
+    try {
+      novaPasta.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {}
+    return novaPasta;
   }
 }
 
@@ -90,5 +122,9 @@ function responseJSON(data) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput("API WebApp do Game Master ativa e operacional!");
+  return responseJSON({
+    status: "ONLINE",
+    app: "Game Master — Hierarquia de Mídia no Google Drive",
+    timestamp: new Date().toISOString()
+  });
 }

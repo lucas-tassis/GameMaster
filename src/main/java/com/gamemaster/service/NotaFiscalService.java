@@ -37,11 +37,13 @@ public class NotaFiscalService {
         }
         NotaFiscal salva = notaRepository.save(nota);
 
-
         Map<String, Object> meta = new HashMap<>();
         meta.put("loja", salva.getLoja());
         meta.put("valor", salva.getValor());
-        meta.put("dataHora", salva.getDataHora().toString());
+        meta.put("dataHora", salva.getDataHora() != null ? salva.getDataHora().toString() : "");
+        if (salva.getEvento() != null) {
+            meta.put("nomeEvento", salva.getEvento().getNome());
+        }
 
         boolean enviado = driveService.enviarMidia("nota_fiscal", salva.getBase64Data(), meta);
         if (enviado) {
@@ -52,4 +54,3 @@ public class NotaFiscalService {
         return salva;
     }
 }
-

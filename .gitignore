@@ -1,0 +1,10 @@
+target/
+*.log
+*.tmp
+ludopedia_acervo.html
+titulos_grupo2088.txt
+src/main/resources/java_covers_code.txt
+src/main/resources/java_master_code.txt
+.DS_Store
+.idea/
+*.iml

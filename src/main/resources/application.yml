@@ -1,5 +1,5 @@
 server:
-  port: 8085
+  port: ${PORT:8085}
   address: 0.0.0.0
   servlet:
     context-path: /
@@ -50,13 +50,14 @@ gamemaster:
   drive:
     script-url: ${GOOGLE_SCRIPT_URL:}
   admin-emails:
+    - "lucastassis2@gmail.com"
     - "admin@gamemaster.com"
 
 # Configurações da API da Ludopedia (OAuth 2.0)
 ludopedia:
   api:
-    token: ${LUDOPEDIA_TOKEN:}
-    app-id: ${LUDOPEDIA_APP_ID:}
-    app-key: ${LUDOPEDIA_APP_KEY:}
+    token: ${LUDOPEDIA_TOKEN:5241730671f53e6aeb9cbb65f19bf060}
+    app-id: ${LUDOPEDIA_APP_ID:027f85b5bc64e191}
+    app-key: ${LUDOPEDIA_APP_KEY:081174bf14197e1f12ca62ba8f75d22f}
     redirect-uri: ${LUDOPEDIA_REDIRECT_URI:http://localhost:8085/api/v1/ludopedia/oauth/callback}
 

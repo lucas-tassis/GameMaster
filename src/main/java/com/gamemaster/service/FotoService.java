@@ -31,11 +31,13 @@ public class FotoService {
         }
         FotoEvento salva = fotoRepository.save(foto);
 
-
         Map<String, Object> meta = new HashMap<>();
         meta.put("legenda", salva.getLegenda());
         meta.put("autor", salva.getAutor());
-        meta.put("dataHora", salva.getDataHora().toString());
+        meta.put("dataHora", salva.getDataHora() != null ? salva.getDataHora().toString() : "");
+        if (salva.getEvento() != null) {
+            meta.put("nomeEvento", salva.getEvento().getNome());
+        }
 
         boolean enviado = driveService.enviarMidia("foto_evento", salva.getBase64Data(), meta);
         if (enviado) {
@@ -46,4 +48,3 @@ public class FotoService {
         return salva;
     }
 }
-

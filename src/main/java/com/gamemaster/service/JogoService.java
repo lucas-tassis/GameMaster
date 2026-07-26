@@ -1,8 +1,11 @@
 package com.gamemaster.service;
 
+import com.gamemaster.model.Evento;
 import com.gamemaster.model.Jogo;
+import com.gamemaster.repository.EventoRepository;
 import com.gamemaster.repository.JogoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -11,14 +14,16 @@ public class JogoService {
 
     private final JogoRepository jogoRepository;
     private final LudopediaService ludopediaService;
+    private final EventoRepository eventoRepository;
 
-    public JogoService(JogoRepository jogoRepository, LudopediaService ludopediaService) {
+    public JogoService(JogoRepository jogoRepository, LudopediaService ludopediaService, EventoRepository eventoRepository) {
         this.jogoRepository = jogoRepository;
         this.ludopediaService = ludopediaService;
+        this.eventoRepository = eventoRepository;
     }
 
     public List<Jogo> listarTodos() {
-        return jogoRepository.findAll();
+        return jogoRepository.findAllByOrderByNomeAsc();
     }
 
     public Jogo salvar(Jogo jogo) {
@@ -32,7 +37,14 @@ public class JogoService {
     public void deletar(Long id) {
         jogoRepository.deleteById(id);
     }
+
+    @Transactional
+    public void deletarTodos() {
+        List<Evento> eventos = eventoRepository.findAll();
+        for (Evento e : eventos) {
+            e.getJogosDisponiveis().clear();
+            eventoRepository.save(e);
+        }
+        jogoRepository.deleteAll();
+    }
 }
-
-
-

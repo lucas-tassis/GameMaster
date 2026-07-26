@@ -19,17 +19,13 @@
   <header class="app-header">
     <div class="header-container">
       <div class="brand">
-        <div class="brand-icon">🎲</div>
-        <div class="brand-text">
-          <h1>Game Master</h1>
-          <span class="brand-subtitle">Evento de Jogos no Mall</span>
-        </div>
-
+        <img src="images/logo.png" alt="Game Master Logo" class="brand-logo-img" style="height: 48px; max-height: 48px; width: auto; object-fit: contain;">
       </div>
-      <div class="header-status">
+      <div class="header-status" style="display: flex; gap: 0.5rem; align-items: center;">
         <span class="status-badge live" id="live-indicator">
           <span class="pulse-dot"></span> Backend Ativo
         </span>
+        <button id="btn-auth-mode" class="btn btn-sm btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: 9999px;">🔐 Entrar como Admin</button>
       </div>
     </div>
   </header>
@@ -57,11 +53,11 @@
         <span class="nav-icon">🧾</span>
         <span class="nav-label">Notas</span>
       </button>
-      <button class="nav-btn" data-tab="usuarios">
+      <button class="nav-btn" data-tab="usuarios" data-admin-only="true">
         <span class="nav-icon">👥</span>
         <span class="nav-label">Usuários</span>
       </button>
-      <button class="nav-btn" data-tab="eventos">
+      <button class="nav-btn" data-tab="eventos" data-admin-only="true">
         <span class="nav-icon">📅</span>
         <span class="nav-label">Eventos</span>
       </button>

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: gamemaster-app
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: LUDOPEDIA_TOKEN
+        value: 5241730671f53e6aeb9cbb65f19bf060

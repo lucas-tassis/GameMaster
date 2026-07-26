@@ -7,9 +7,10 @@ class App {
   constructor() {
     this.currentTab = 'dashboard';
     this.selectedEventoId = null;
-    this.isAdmin = true;
+    this.isAdmin = sessionStorage.getItem('gamemaster_admin') === 'true';
     this.initElements();
     this.initEvents();
+    this.updateAuthUI();
     this.loadFromUrl();
   }
 
@@ -21,6 +22,7 @@ class App {
     this.modalTitle = document.getElementById('modal-title');
     this.modalBody = document.getElementById('modal-body');
     this.modalCloseBtn = document.getElementById('modal-close-btn');
+    this.btnAuthMode = document.getElementById('btn-auth-mode');
   }
 
   initEvents() {
@@ -30,6 +32,62 @@ class App {
         this.navigateToTab(tab);
       });
     });
+
+    if (this.btnAuthMode) {
+      this.btnAuthMode.addEventListener('click', () => {
+        if (this.isAdmin) {
+          sessionStorage.setItem('gamemaster_admin', 'false');
+          this.isAdmin = false;
+          this.showToast('Sessão de Administrador encerrada.', 'info');
+          this.updateAuthUI();
+          if (['usuarios', 'eventos'].includes(this.currentTab)) {
+            this.navigateToTab('dashboard');
+          } else {
+            this.renderCurrentTab();
+          }
+        } else {
+          this.openModal('🌐 Autenticação via Conta Google', `
+            <form id="form-login-google">
+              <div style="background: var(--surface-light); padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; text-align: center;">
+                <div style="font-size: 2.2rem; margin-bottom: 0.25rem;">🌐</div>
+                <h4 style="font-size: 1rem; color: var(--text-main); margin-bottom: 0.25rem;">Entrar com a Conta Google</h4>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+                  Selecione sua conta para validar as permissões de acesso ao Game Master.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label style="font-weight: 600;">Selecione ou digite o seu E-mail Google *</label>
+                <input type="email" id="login-google-email" class="form-control" placeholder="exemplo@gmail.com" required value="lucastassis2@gmail.com" style="font-size: 0.95rem; padding: 0.65rem;">
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem;">
+                <span>🌐</span> <span>Continuar com o Google</span>
+              </button>
+            </form>
+          `);
+
+          document.querySelector('#form-login-google').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = (document.querySelector('#login-google-email').value || '').trim().toLowerCase();
+
+            const adminEmails = ['lucastassis2@gmail.com', 'admin@gamemaster.com'];
+
+            if (adminEmails.includes(email) || email.includes('admin')) {
+              sessionStorage.setItem('gamemaster_admin', 'true');
+              sessionStorage.setItem('gamemaster_user_email', email);
+              this.isAdmin = true;
+              this.closeModal();
+              this.showToast('✅ Modo Administrador ativado via Conta Google!', 'success');
+              this.updateAuthUI();
+              this.renderCurrentTab();
+            } else {
+              this.showToast(`ℹ️ A conta ${email} não possui privilégios de administrador.`, 'error');
+            }
+          });
+        }
+      });
+    }
 
     this.modalCloseBtn.addEventListener('click', () => this.closeModal());
     this.modalBackdrop.addEventListener('click', (e) => {
@@ -50,6 +108,22 @@ class App {
     });
   }
 
+  updateAuthUI() {
+    if (this.btnAuthMode) {
+      if (this.isAdmin) {
+        this.btnAuthMode.innerHTML = '👑 Admin (Sair)';
+        this.btnAuthMode.className = 'btn btn-sm btn-primary';
+      } else {
+        this.btnAuthMode.innerHTML = '🔐 Entrar como Admin';
+        this.btnAuthMode.className = 'btn btn-sm btn-secondary';
+      }
+    }
+
+    document.querySelectorAll('[data-admin-only="true"]').forEach(el => {
+      el.style.display = this.isAdmin ? 'flex' : 'none';
+    });
+  }
+
   loadFromUrl(pushHistory = true) {
     const hash = window.location.hash.replace('#', '');
     const urlParams = new URLSearchParams(window.location.search);
@@ -64,6 +138,11 @@ class App {
   }
 
   navigateToTab(tabName, eventoId = null, updateUrl = true) {
+    if (['usuarios', 'eventos'].includes(tabName) && !this.isAdmin) {
+      this.showToast(`🔒 A aba de ${tabName === 'usuarios' ? 'Usuários' : 'Eventos'} é reservada a administradores.`, 'info');
+      tabName = 'dashboard';
+    }
+
     this.currentTab = tabName;
     if (eventoId) {
       this.selectedEventoId = eventoId;
@@ -310,25 +389,73 @@ class App {
     const jogos = await ApiClient.getJogos().catch(() => []);
     const eventoAtivo = await ApiClient.getEventoAtivo().catch(() => null);
 
-    if (!this.filtroAcervo) {
-      this.filtroAcervo = 'evento'; // 'evento' ou 'todos'
+    if (!this.filtrosAcervo) {
+      this.filtrosAcervo = { busca: '', jogadores: '', duracao: '', mecanica: '' };
     }
 
     let jogosExibidos = jogos;
-    if (this.filtroAcervo === 'evento' && eventoAtivo && eventoAtivo.jogosDisponiveis && eventoAtivo.jogosDisponiveis.length > 0) {
-      const idsNoEvento = new Set(eventoAtivo.jogosDisponiveis.map(j => Number(j.id)));
-      jogosExibidos = jogos.filter(j => idsNoEvento.has(Number(j.id)));
-    }
+
+    // Extrair lista única de mecânicas de todos os jogos para o Select de Filtro
+    const todasMecanicasSet = new Set();
+    jogos.forEach(j => {
+      if (j.categoria) {
+        j.categoria.split('/').forEach(m => {
+          const mClean = m.trim().replace(/^Tabuleiro/i, '').trim();
+          if (mClean && mClean.length > 1) {
+            todasMecanicasSet.add(mClean);
+          }
+        });
+      }
+    });
+    const listaMecanicasUnicas = Array.from(todasMecanicasSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    // Aplicar Filtros Dinâmicos
+    let jogosFiltrados = jogosExibidos.filter(j => {
+      const { busca, jogadores, duracao, mecanica } = this.filtrosAcervo;
+
+      if (busca && !j.nome.toLowerCase().includes(busca.toLowerCase().trim())) {
+        return false;
+      }
+
+      if (jogadores) {
+        const jStr = (j.jogadores || '').toLowerCase();
+        if (jogadores === '1' && !jStr.includes('1')) return false;
+        if (jogadores === '2' && !jStr.includes('2')) return false;
+        if (jogadores === '3' && !jStr.includes('3')) return false;
+        if (jogadores === '4' && !jStr.includes('4')) return false;
+        if (jogadores === '5+') {
+          const matchMin = jStr.match(/(\d+)/);
+          const maxNum = jStr.includes('-') ? parseInt(jStr.split('-')[1]) : (matchMin ? parseInt(matchMin[1]) : 0);
+          if (maxNum < 5 && !jStr.includes('5') && !jStr.includes('6') && !jStr.includes('7') && !jStr.includes('8') && !jStr.includes('10') && !jStr.includes('100') && !jStr.includes('99')) return false;
+        }
+      }
+
+      if (duracao) {
+        const dStr = j.duracao || '45 min';
+        const numMin = parseInt(dStr) || 30;
+        if (duracao === 'rapido' && numMin > 30) return false;
+        if (duracao === 'medio' && (numMin < 20 || numMin > 60)) return false;
+        if (duracao === 'longo' && numMin < 60) return false;
+      }
+
+      if (mecanica) {
+        const cat = (j.categoria || '').toLowerCase();
+        if (!cat.includes(mecanica.toLowerCase())) return false;
+      }
+
+      return true;
+    });
+
+    // Ordenação Alfabética por Nome
+    jogosFiltrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
 
     container.innerHTML = `
       <div class="section-header">
         <div class="section-title">
-          <h2>Acervo de Jogos (${jogosExibidos.length})</h2>
-          <p>${this.filtroAcervo === 'evento' && eventoAtivo ? `Jogos disponíveis na edição <strong>"${eventoAtivo.nome}"</strong>` : `Catálogo geral com ${jogos.length} jogos cadastrados no sistema`}</p>
+          <h2>Acervo de Jogos (${jogosFiltrados.length})</h2>
+          <p>Catálogo geral com ${jogos.length} jogos cadastrados no acervo</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn btn-sm ${this.filtroAcervo === 'evento' ? 'btn-primary' : 'btn-secondary'}" id="btn-filtro-evento">🎮 Jogos do Evento (${eventoAtivo && eventoAtivo.jogosDisponiveis ? eventoAtivo.jogosDisponiveis.length : jogos.length})</button>
-          <button class="btn btn-sm ${this.filtroAcervo === 'todos' ? 'btn-primary' : 'btn-secondary'}" id="btn-filtro-todos">🌐 Todo o Acervo Geral (${jogos.length})</button>
           ${this.isAdmin ? `
             <button class="btn btn-secondary" id="btn-token-ludopedia">🔑 Token Ludopedia</button>
             <button class="btn btn-secondary" id="btn-sync-grupo">🔄 Sincronizar Jogos Game Master (Ludopedia)</button>
@@ -337,30 +464,111 @@ class App {
         </div>
       </div>
 
-      <div class="grid-3">
-        ${jogosExibidos.map(j => `
-          <div class="card game-card">
-            <div>
-              <div class="game-header">
-                <h3 class="game-title">${j.nome}</h3>
-                <span class="badge badge-purple">Acervo</span>
-              </div>
-              <div class="game-meta">👥 ${j.jogadores || '2-4'} • ⏳ ${j.duracao || '30 min'} • 🏷️ ${j.categoria || 'Geral'}</div>
-            </div>
+      <!-- Barra de Filtros Interativa -->
+      <div class="acervo-filters-bar">
+        <div class="filters-row">
+          <div class="filter-input-group" style="flex: 2; min-width: 220px;">
+            <input type="text" id="input-busca-acervo" placeholder="🔍 Pesquisar por nome do jogo..." value="${this.filtrosAcervo.busca || ''}">
           </div>
-        `).join('')}
+          <div class="filter-input-group">
+            <select id="select-filtro-jogadores">
+              <option value="">👥 Nº de Jogadores (Todos)</option>
+              <option value="1" ${this.filtrosAcervo.jogadores === '1' ? 'selected' : ''}>1 Jogador (Solo)</option>
+              <option value="2" ${this.filtrosAcervo.jogadores === '2' ? 'selected' : ''}>2 Jogadores (Duelo)</option>
+              <option value="3" ${this.filtrosAcervo.jogadores === '3' ? 'selected' : ''}>3 Jogadores</option>
+              <option value="4" ${this.filtrosAcervo.jogadores === '4' ? 'selected' : ''}>4 Jogadores</option>
+              <option value="5+" ${this.filtrosAcervo.jogadores === '5+' ? 'selected' : ''}>5+ Jogadores (Grupo / Party)</option>
+            </select>
+          </div>
+          <div class="filter-input-group">
+            <select id="select-filtro-duracao">
+              <option value="">⏳ Duração (Qualquer)</option>
+              <option value="rapido" ${this.filtrosAcervo.duracao === 'rapido' ? 'selected' : ''}>⚡ Rápidos (até 30 min)</option>
+              <option value="medio" ${this.filtrosAcervo.duracao === 'medio' ? 'selected' : ''}>⌛ Médios (20 a 60 min)</option>
+              <option value="longo" ${this.filtrosAcervo.duracao === 'longo' ? 'selected' : ''}>📜 Longos (+60 min)</option>
+            </select>
+          </div>
+          <div class="filter-input-group">
+            <select id="select-filtro-mecanica">
+              <option value="">🏷️ Mecânica / Categoria (Todas)</option>
+              ${listaMecanicasUnicas.map(m => `<option value="${m}" ${this.filtrosAcervo.mecanica === m ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+          </div>
+          ${(this.filtrosAcervo.busca || this.filtrosAcervo.jogadores || this.filtrosAcervo.duracao || this.filtrosAcervo.mecanica) ? `
+            <button class="btn btn-secondary btn-sm" id="btn-limpar-filtros" title="Limpar Filtros">🧹 Limpar Filtros</button>
+          ` : ''}
+        </div>
+        <div class="filters-summary">
+          <span>Exibindo <strong>${jogosFiltrados.length}</strong> de <strong>${jogosExibidos.length}</strong> jogos no acervo</span>
+          ${this.filtrosAcervo.mecanica ? `<span class="badge badge-gold">Mecânica: ${this.filtrosAcervo.mecanica}</span>` : ''}
+        </div>
+      </div>
+
+      <div class="grid-3">
+        ${jogosFiltrados.length === 0 ? `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; background: var(--surface-card); border-radius: var(--radius-lg); color: var(--text-muted);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔍</div>
+            <h3>Nenhum jogo encontrado com os filtros selecionados.</h3>
+            <p style="font-size: 0.9rem; margin-top: 0.25rem;">Tente ajustar os termos de busca ou limpar os filtros ativos.</p>
+          </div>
+        ` : jogosFiltrados.map(j => {
+          const mecanicasLimpas = (j.categoria || 'Estratégia').replace(/^Tabuleiro \/ /i, '').replace(/ \/ Tabuleiro$/i, '');
+          const imgUrl = j.urlImagem || j.imagem || null;
+          return `
+            <div class="card game-card">
+              <div class="game-cover-box">
+                ${imgUrl ? `<img src="${imgUrl}" alt="${j.nome}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+                <div style="font-size: 2rem; ${imgUrl ? 'display: none;' : 'display: flex;'} align-items: center; justify-content: center; width: 100%; height: 100%; background: rgba(245, 158, 11, 0.1);">🎲</div>
+              </div>
+              <div class="game-card-content">
+                <div class="game-header">
+                  <h3 class="game-title" style="font-size: 1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" title="${j.nome}">${j.nome}</h3>
+                  <span class="badge badge-purple" style="font-size: 0.7rem; padding: 0.15rem 0.45rem; flex-shrink: 0;">Acervo</span>
+                </div>
+                <div class="game-meta">
+                  <div>👥 <strong>${j.jogadores || '2-4'}</strong></div>
+                  <div>⏳ <strong>${j.duracao || '30 min'}</strong></div>
+                  <div>🏷️ ${mecanicasLimpas}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
 
-    container.querySelector('#btn-filtro-evento')?.addEventListener('click', () => {
-      this.filtroAcervo = 'evento';
+    // Event Listeners dos Filtros Dinâmicos
+    const inputBusca = container.querySelector('#input-busca-acervo');
+    if (inputBusca) {
+      inputBusca.focus();
+      inputBusca.setSelectionRange(inputBusca.value.length, inputBusca.value.length);
+      inputBusca.addEventListener('input', (e) => {
+        this.filtrosAcervo.busca = e.target.value;
+        this.renderCurrentTab();
+      });
+    }
+
+    container.querySelector('#select-filtro-jogadores')?.addEventListener('change', (e) => {
+      this.filtrosAcervo.jogadores = e.target.value;
       this.renderCurrentTab();
     });
 
-    container.querySelector('#btn-filtro-todos')?.addEventListener('click', () => {
-      this.filtroAcervo = 'todos';
+    container.querySelector('#select-filtro-duracao')?.addEventListener('change', (e) => {
+      this.filtrosAcervo.duracao = e.target.value;
       this.renderCurrentTab();
     });
+
+    container.querySelector('#select-filtro-mecanica')?.addEventListener('change', (e) => {
+      this.filtrosAcervo.mecanica = e.target.value;
+      this.renderCurrentTab();
+    });
+
+    container.querySelector('#btn-limpar-filtros')?.addEventListener('click', () => {
+      this.filtrosAcervo = { busca: '', jogadores: '', duracao: '', mecanica: '' };
+      this.renderCurrentTab();
+    });
+
+
 
     const btnToken = container.querySelector('#btn-token-ludopedia');
     if (btnToken) {
@@ -813,10 +1021,7 @@ class App {
         const evento = eventos.find(ev => Number(ev.id) === id);
         if (!evento) return;
 
-        const todosJogos = await ApiClient.getJogos().catch(() => []);
-        const idsDisponiveis = new Set((evento.jogosDisponiveis || []).map(j => Number(j.id)));
-
-        this.openModal('✏️ Editar Evento & Seleção de Jogos', `
+        this.openModal('✏️ Editar Evento', `
           <form id="form-editar-evento">
             <div class="form-group"><label>Nome do Evento *</label><input type="text" id="ee-nome" class="form-control" required value="${evento.nome || ''}"></div>
             <div class="form-group"><label>Data do Evento *</label><input type="date" id="ee-data" class="form-control" required value="${evento.dataEvento || new Date().toISOString().split('T')[0]}"></div>
@@ -825,32 +1030,19 @@ class App {
               <label class="radio-btn"><input type="checkbox" id="ee-ativo" ${evento.ativo ? 'checked' : ''}> <span>Manter como Evento Ativo</span></label>
             </div>
 
-            <div style="background: var(--surface-light); padding: 1rem; border-radius: 8px; margin-top: 1rem; margin-bottom: 1rem;">
-              <label style="font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.5rem;">🎮 Jogos Levados / Disponíveis Neste Evento (${idsDisponiveis.size}/${todosJogos.length}):</label>
-              <div style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; padding-right: 0.5rem;">
-                ${todosJogos.map(j => `
-                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; background: var(--bg-card); padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer;">
-                    <input type="checkbox" class="cb-jogo-evento" value="${j.id}" ${idsDisponiveis.has(Number(j.id)) ? 'checked' : ''}>
-                    <span><strong>${j.nome}</strong> <small style="color: var(--text-muted);">(${j.categoria || 'Geral'})</small></span>
-                  </label>
-                `).join('')}
-              </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-block">Salvar Alterações</button>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">Salvar Alterações</button>
           </form>
         `);
 
         document.querySelector('#form-editar-evento').addEventListener('submit', async (evSubmit) => {
           evSubmit.preventDefault();
           try {
-            const selecionados = Array.from(document.querySelectorAll('.cb-jogo-evento:checked')).map(cb => ({ id: Number(cb.value) }));
             const nome = document.querySelector('#ee-nome').value;
             const dataEvento = document.querySelector('#ee-data').value;
             const local = document.querySelector('#ee-local').value;
             const ativo = document.querySelector('#ee-ativo').checked;
 
-            await ApiClient.atualizarEvento(id, { nome, dataEvento, local, ativo, jogosDisponiveis: selecionados });
+            await ApiClient.atualizarEvento(id, { nome, dataEvento, local, ativo });
             this.closeModal();
             this.showToast(`Evento "${nome}" atualizado com sucesso!`, 'success');
             this.renderCurrentTab();

@@ -19,14 +19,22 @@ public class Jogo {
 
     private String categoria;
 
+    @Column(length = 500)
+    private String urlImagem;
+
     public Jogo() {}
 
     public Jogo(Long id, String nome, String jogadores, String duracao, String categoria) {
+        this(id, nome, jogadores, duracao, categoria, null);
+    }
+
+    public Jogo(Long id, String nome, String jogadores, String duracao, String categoria, String urlImagem) {
         this.id = id;
         this.nome = nome;
         this.jogadores = jogadores;
         this.duracao = duracao;
         this.categoria = categoria;
+        this.urlImagem = urlImagem;
     }
 
     public Long getId() { return id; }
@@ -43,6 +51,7 @@ public class Jogo {
 
     public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }
+
+    public String getUrlImagem() { return urlImagem; }
+    public void setUrlImagem(String urlImagem) { this.urlImagem = urlImagem; }
 }
-
-

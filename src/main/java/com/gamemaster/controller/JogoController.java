@@ -32,6 +32,10 @@ public class JogoController {
         jogoService.deletar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deletarTodos() {
+        jogoService.deletarTodos();
+        return ResponseEntity.noContent().build();
+    }
 }
-
-

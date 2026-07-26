@@ -29,14 +29,6 @@ public class Evento {
 
     private boolean ativo;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "evento_jogos",
-        joinColumns = @JoinColumn(name = "evento_id"),
-        inverseJoinColumns = @JoinColumn(name = "jogo_id")
-    )
-    private java.util.Set<Jogo> jogosDisponiveis = new java.util.HashSet<>();
-
     public Evento() {}
 
     public Evento(Long id, String nome, String local, LocalDate dataEvento, LocalDate dataInicio, LocalDate dataFim, boolean ativo) {
@@ -69,9 +61,4 @@ public class Evento {
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
-
-    public java.util.Set<Jogo> getJogosDisponiveis() { return jogosDisponiveis; }
-    public void setJogosDisponiveis(java.util.Set<Jogo> jogosDisponiveis) { this.jogosDisponiveis = jogosDisponiveis; }
 }
-
-
