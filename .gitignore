@@ -10,3 +10,4 @@ src/main/resources/java_master_code.txt
 .DS_Store
 .idea/
 *.iml
+client_secret*.json

@@ -95,7 +95,7 @@ class App {
 
               <div class="form-group" style="margin-top: 0.75rem;">
                 <label style="font-weight: 600;">Senha de Administrador *</label>
-                <input type="password" id="login-admin-senha" class="form-control" placeholder="Digite a senha (padrão: admin123)" required value="" style="font-size: 0.95rem; padding: 0.65rem;">
+                <input type="password" id="login-admin-senha" class="form-control" placeholder="Digite sua senha de administrador" required value="" style="font-size: 0.95rem; padding: 0.65rem;">
               </div>
 
               <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.25rem; padding: 0.75rem;">
