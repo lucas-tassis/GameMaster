@@ -1,6 +1,5 @@
 package com.gamemaster.config;
 
-import com.gamemaster.model.Role;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,38 +27,29 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
             .authorizeHttpRequests(auth -> auth
-                // Recursos Estáticos & Console H2
                 .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/h2-console/**", "/favicon.ico").permitAll()
-                // API Pública / Visitantes (Check-in sem conta, consulta acervo, eventos, fotos e notas)
+                .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/presenca").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/jogos").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/eventos/ativo").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/eventos/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/fotos").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/notas").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/fotos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/notas").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/dashboard/stats").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll()
-                // Endpoints Administrativos (Exigem ROLE_ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/v1/jogos").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/jogos/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/presenca").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/v1/ludopedia/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/ludopedia/**").permitAll()
-
-                .requestMatchers(HttpMethod.GET, "/api/v1/eventos/**").permitAll()
-
                 .requestMatchers(HttpMethod.POST, "/api/v1/eventos/**").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/v1/eventos/**").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/eventos/**").permitAll()
                 .anyRequest().permitAll()
-
-
-
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .defaultSuccessUrl("/#acervo?auth=google_sucesso", true)
             );
-
 
         return http.build();
     }

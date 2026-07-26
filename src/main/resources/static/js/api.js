@@ -142,6 +142,10 @@ export class ApiClient {
   static async setConfigTokenLudopedia(token) {
     return this.post('/ludopedia/config-token', { token });
   }
+
+  static async getMe() {
+    return this.get('/auth/me');
+  }
 }
 
 
