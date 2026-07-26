@@ -1,4 +1,6 @@
 target/
+target/*
+target/**
 *.log
 *.tmp
 ludopedia_acervo.html
