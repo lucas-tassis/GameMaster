@@ -91,24 +91,21 @@ public class EventoService {
         Evento evento = eventoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Evento não encontrado com ID: " + id));
 
-        // Desvincular presenças, fotos e notas para evitar erro de Chave Estrangeira (FK)
+        // Deletar registros vinculados para evitar erros de Integridade / FK
         List<Presenca> presencas = presencaRepository.findByEventoId(id);
-        for (Presenca p : presencas) {
-            p.setEvento(null);
+        if (!presencas.isEmpty()) {
+            presencaRepository.deleteAll(presencas);
         }
-        presencaRepository.saveAll(presencas);
 
         List<FotoEvento> fotos = fotoRepository.findByEventoId(id);
-        for (FotoEvento f : fotos) {
-            f.setEvento(null);
+        if (!fotos.isEmpty()) {
+            fotoRepository.deleteAll(fotos);
         }
-        fotoRepository.saveAll(fotos);
 
         List<NotaFiscal> notas = notaRepository.findByEventoId(id);
-        for (NotaFiscal n : notas) {
-            n.setEvento(null);
+        if (!notas.isEmpty()) {
+            notaRepository.deleteAll(notas);
         }
-        notaRepository.saveAll(notas);
 
         boolean eraAtivo = evento.isAtivo();
         eventoRepository.delete(evento);

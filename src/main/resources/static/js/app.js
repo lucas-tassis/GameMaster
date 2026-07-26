@@ -1014,6 +1014,20 @@ class App {
       });
     });
 
+    container.querySelectorAll('.btn-ativar-evento').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = Number(e.currentTarget.dataset.id);
+        try {
+          await ApiClient.put(`/eventos/${id}/ativar`);
+          this.showToast('Evento ativado como Evento Principal!', 'success');
+          this.renderCurrentTab();
+        } catch (err) {
+          console.error('Erro ao ativar evento:', err);
+          this.showToast('Erro ao ativar evento no servidor', 'error');
+        }
+      });
+    });
+
     container.querySelectorAll('.btn-excluir-evento').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
