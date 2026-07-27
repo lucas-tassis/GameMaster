@@ -24,6 +24,19 @@ function doPost(e) {
     const base64Data = data.base64;
     const nomeEvento = data.nomeEvento || data.eventoNome || 'Edição Principal';
 
+    if (tipo === 'criar_evento') {
+      const pastaRaizApp = obterOuCriarPastaNoPai(DriveApp.getRootFolder(), "Game Master");
+      const nomeEvClean = (nomeEvento && nomeEvento.trim()) ? nomeEvento.trim() : "Evento_Geral";
+      const pastaEvento = obterOuCriarPastaNoPai(pastaRaizApp, nomeEvClean);
+      obterOuCriarPastaNoPai(pastaEvento, "Fotos");
+      obterOuCriarPastaNoPai(pastaEvento, "Notas Fiscais");
+      return responseJSON({
+        success: true,
+        message: `Pastas do evento "${nomeEvClean}" criadas no Google Drive!`,
+        folderUrl: pastaEvento.getUrl()
+      });
+    }
+
     if (!base64Data) {
       return responseJSON({ success: false, message: "Conteúdo da imagem (Base64) não informado." });
     }

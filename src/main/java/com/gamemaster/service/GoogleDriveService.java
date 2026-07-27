@@ -44,5 +44,30 @@ public class GoogleDriveService {
             return false;
         }
     }
+
+    public boolean criarPastasEvento(String nomeEvento) {
+        if (scriptUrl == null || scriptUrl.isBlank()) {
+            log.warn("URL do Google Apps Script não configurada no application.yml. Pastas do Drive não criadas automaticamente.");
+            return false;
+        }
+
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("tipo", "criar_evento");
+            payload.put("nomeEvento", nomeEvento);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(scriptUrl, request, String.class);
+
+            log.info("Resposta da criação de pastas no Google Drive: Status {}", response.getStatusCode());
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Erro ao criar pastas no Google Drive: {}", e.getMessage());
+            return false;
+        }
+    }
 }
 

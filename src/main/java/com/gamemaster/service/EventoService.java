@@ -21,12 +21,14 @@ public class EventoService {
     private final PresencaRepository presencaRepository;
     private final FotoEventoRepository fotoRepository;
     private final NotaFiscalRepository notaRepository;
+    private final GoogleDriveService googleDriveService;
 
-    public EventoService(EventoRepository eventoRepository, PresencaRepository presencaRepository, FotoEventoRepository fotoRepository, NotaFiscalRepository notaRepository) {
+    public EventoService(EventoRepository eventoRepository, PresencaRepository presencaRepository, FotoEventoRepository fotoRepository, NotaFiscalRepository notaRepository, GoogleDriveService googleDriveService) {
         this.eventoRepository = eventoRepository;
         this.presencaRepository = presencaRepository;
         this.fotoRepository = fotoRepository;
         this.notaRepository = notaRepository;
+        this.googleDriveService = googleDriveService;
     }
 
     public List<Evento> listarTodos() {
@@ -44,7 +46,13 @@ public class EventoService {
         if (evento.isAtivo()) {
             desativarTodos();
         }
-        return eventoRepository.save(evento);
+        Evento salvo = eventoRepository.save(evento);
+        if (salvo.getNome() != null && !salvo.getNome().isBlank()) {
+            try {
+                googleDriveService.criarPastasEvento(salvo.getNome());
+            } catch (Exception ignored) {}
+        }
+        return salvo;
     }
 
     @Transactional
